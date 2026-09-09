@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Univeros\Polaris\Http\Middleware;
+namespace Polaris\Http;
 
 /**
  * The authenticated principal carried by a validated `login_mfa` ticket: the id of the user who
@@ -12,7 +12,7 @@ namespace Univeros\Polaris\Http\Middleware;
  * It is a typed object on purpose. Request attributes are merged into the domain's input alongside
  * the request body (body wins on a key clash), so a string attribute could be spoofed by a client
  * POSTing the attribute key. Requiring an `instanceof MfaTicket` — which a JSON body value can never
- * be — makes the trusted user id unforgeable, exactly as {@see \Altair\Http\Contracts\TokenInterface}
+ * be — makes the trusted user id unforgeable, exactly as the access token attribute
  * does for the access-token attribute.
  */
 final readonly class MfaTicket

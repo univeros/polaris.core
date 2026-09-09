@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Univeros\Polaris\Tests\Http\Middleware;
+namespace Polaris\Tests\Psr15\Middleware;
 
 use Laminas\Diactoros\ServerRequestFactory;
 use PHPUnit\Framework\TestCase;
+use Polaris\Psr15\Middleware\BearerTokenExtractor;
 use Psr\Http\Message\ServerRequestInterface;
-use Univeros\Polaris\Http\Middleware\BearerTokenExtractor;
 
 final class BearerTokenExtractorTest extends TestCase
 {
@@ -29,32 +29,20 @@ final class BearerTokenExtractorTest extends TestCase
 
     public function testReturnsNullWhenTheHeaderIsAbsent(): void
     {
-        $request = (new ServerRequestFactory())->createServerRequest('GET', '/');
-
-        self::assertNull((new BearerTokenExtractor('Authorization'))->extract($request));
+        self::assertNull((new BearerTokenExtractor())->extract((new ServerRequestFactory())->createServerRequest('GET', '/')));
     }
 
-    public function testReturnsNullForANonBearerScheme(): void
+    public function testReturnsNullForANonBearerSchemeOrAnEmptyToken(): void
     {
-        // A Basic-auth header must never be fed to the JWT parser.
         self::assertNull($this->extract('Basic dXNlcjpwYXNz'));
-    }
-
-    public function testReturnsNullWhenTheSchemeCarriesNoToken(): void
-    {
         self::assertNull($this->extract('Bearer'));
         self::assertNull($this->extract('Bearer   '));
     }
 
     private function extract(string $authorization): ?string
     {
-        return (new BearerTokenExtractor('Authorization'))->extract($this->requestWith($authorization));
-    }
-
-    private function requestWith(string $authorization): ServerRequestInterface
-    {
-        return (new ServerRequestFactory())
-            ->createServerRequest('GET', '/')
-            ->withHeader('Authorization', $authorization);
+        return (new BearerTokenExtractor())->extract(
+            (new ServerRequestFactory())->createServerRequest('GET', '/')->withHeader('Authorization', $authorization),
+        );
     }
 }

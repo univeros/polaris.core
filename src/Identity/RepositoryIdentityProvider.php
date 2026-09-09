@@ -27,7 +27,7 @@ use Polaris\Model\User;
  * responsibility (see `docs/auth/flows.md` §login and `docs/auth/security.md` §4),
  * which reads them from the {@see User} entity, not from this record.
  */
-final class CycleIdentityProvider implements IdentityProviderInterface
+final class RepositoryIdentityProvider implements IdentityProviderInterface
 {
     /**
      * The User field the login identifier is matched against. Fixed to `email` for

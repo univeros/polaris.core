@@ -2,47 +2,47 @@
 
 declare(strict_types=1);
 
-namespace Univeros\Polaris\Tests\Http\Middleware;
+namespace Polaris\Tests\Psr15\Middleware;
 
 use Laminas\Diactoros\Response;
 use Laminas\Diactoros\ServerRequestFactory;
 use PHPUnit\Framework\TestCase;
+use Polaris\Http\Attributes;
+use Polaris\Psr15\Middleware\ClientContextMiddleware;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use Univeros\Polaris\Http\Middleware\ClientContextMiddleware;
 
 use function str_repeat;
 use function strlen;
 
 final class ClientContextMiddlewareTest extends TestCase
 {
-    public function testAttachesTheUserAgentAsARequestAttribute(): void
+    public function testAttachesTheUserAgentAndTheRemoteAddress(): void
     {
         $seen = $this->process($this->request()->withHeader('User-Agent', 'Browser/1.0'));
 
-        self::assertSame('Browser/1.0', $seen->getAttribute(ClientContextMiddleware::ATTRIBUTE_USER_AGENT));
+        self::assertSame('Browser/1.0', $seen->getAttribute(Attributes::USER_AGENT));
+        self::assertSame('203.0.113.7', $seen->getAttribute(Attributes::IP_ADDRESS));
     }
 
     public function testStripsControlCharactersAndTruncatesToTheColumnSize(): void
     {
-        // A tab is a control character that survives PSR-7 header validation; CR/LF/NUL are
-        // rejected by the message implementation itself before they ever reach the middleware.
         $hostile = "Evil/1.0\tInjected" . str_repeat('a', 300);
-
         $seen = $this->process($this->request()->withHeader('User-Agent', $hostile));
+        $attribute = (string) $seen->getAttribute(Attributes::USER_AGENT);
 
-        $attribute = (string) $seen->getAttribute(ClientContextMiddleware::ATTRIBUTE_USER_AGENT);
         self::assertStringNotContainsString("\t", $attribute);
         self::assertSame(255, strlen($attribute), 'bounded to the user_agent column size');
         self::assertStringStartsWith('Evil/1.0Injected', $attribute);
     }
 
-    public function testAnAbsentHeaderSetsNoAttribute(): void
+    public function testAnAbsentHeaderSetsNoAttributeAndAPresetIpIsKept(): void
     {
-        $seen = $this->process($this->request());
+        $seen = $this->process($this->request()->withAttribute(Attributes::IP_ADDRESS, '198.51.100.9'));
 
-        self::assertNull($seen->getAttribute(ClientContextMiddleware::ATTRIBUTE_USER_AGENT));
+        self::assertNull($seen->getAttribute(Attributes::USER_AGENT));
+        self::assertSame('198.51.100.9', $seen->getAttribute(Attributes::IP_ADDRESS), 'an adapter-set address wins over REMOTE_ADDR');
     }
 
     private function process(ServerRequestInterface $request): ServerRequestInterface
@@ -57,7 +57,6 @@ final class ClientContextMiddlewareTest extends TestCase
                 return new Response();
             }
         };
-
         (new ClientContextMiddleware())->process($request, $handler);
         self::assertNotNull($handler->request);
 
@@ -66,6 +65,6 @@ final class ClientContextMiddlewareTest extends TestCase
 
     private function request(): ServerRequestInterface
     {
-        return (new ServerRequestFactory())->createServerRequest('POST', '/auth/login');
+        return (new ServerRequestFactory())->createServerRequest('POST', '/auth/login', ['REMOTE_ADDR' => '203.0.113.7']);
     }
 }
